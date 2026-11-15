@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+"""Fanoos desktop shell for Linux.
+
+Serves the web app on 127.0.0.1 and exposes the HTTP bridge extensions need (./__proxy), then
+opens it in a WebKitGTK window. Falls back to Chromium/Chrome --app mode, then to the default
+browser. Python standard library only; the window needs python3-gi + gir1.2-webkit2-4.1.
+"""
+import http.server
+import json
+import mimetypes
+import os
+import secrets
+import shutil
+import subprocess
+import sys
+import threading
+import urllib.error
+import urllib.parse
+import urllib.request
+import webbrowser
+
+APP_DIR = os.path.realpath(os.environ.get('FANOOS_APP', '/usr/share/fanoos/app'))
+DATA_DIR = os.path.join(os.environ.get('XDG_DATA_HOME', os.path.expanduser('~/.local/share')), 'fanoos')
+PORT = int(os.environ.get('FANOOS_PORT', '47800'))  # fixed: browser storage is per origin (host+port)
+TOKEN = secrets.token_urlsafe(16)  # random path prefix so other local pages can't use the proxy
+UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
+
+mimetypes.add_type('application/javascript', '.js')
+mimetypes.add_type('image/svg+xml', '.svg')
+quit_event = threading.Event()
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def reply(self, status, body, ctype='text/plain; charset=utf-8'):
+        self.send_response(status)
+        self.send_header('Content-Type', ctype)
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        u = urllib.parse.urlsplit(self.path)
+        prefix = '/' + TOKEN + '/'
+        if not u.path.startswith(prefix):
+            return self.reply(404, b'Not found')
+        rel = urllib.parse.unquote(u.path[len(prefix):])
+        if rel == '__proxy':
+            return self.proxy(urllib.parse.parse_qs(u.query))
+        if rel == '__open':
+            return self.open_external(urllib.parse.parse_qs(u.query))
+        if rel == '__exit':
+            self.reply(204, b'')
+            quit_event.set()
+            return
+        path = os.path.realpath(os.path.join(APP_DIR, rel or 'index.html'))
+        if not path.startswith(APP_DIR + os.sep) or not os.path.isfile(path):
+            return self.reply(404, b'Not found')
+        with open(path, 'rb') as f:
+            self.reply(200, f.read(), mimetypes.guess_type(path)[0] or 'application/octet-stream')
+
+    def open_external(self, q):
+        url = (q.get('url') or [''])[0]
+        title = (q.get('title') or [''])[0]
+        player = (q.get('player') or [''])[0]
+        if urllib.parse.urlsplit(url).scheme not in ('http', 'https'):
+            return self.reply(400, b'Blocked URL')
+        try:
+            launch_player(url, title, player)
+            self.reply(200, b'ok')
+        except OSError:
+            self.reply(404, b'not-installed')
+
+    def proxy(self, q):
+        try:
+            req = json.loads(q['r'][0])
+            url = req['url']
+            if urllib.parse.urlsplit(url).scheme not in ('http', 'https'):
+                return self.reply(400, b'Blocked URL scheme')
+            headers = dict(req.get('headers') or {})
+            if not any(k.lower() == 'user-agent' for k in headers):
+                headers['User-Agent'] = UA
+            body = req.get('body')
+            r = urllib.request.Request(url, data=None if body is None else body.encode('utf-8'),
+                                       method=req.get('method') or 'GET', headers=headers)
+            try:
+                with urllib.request.urlopen(r, timeout=30) as resp:
+                    status, raw, final, hdrs = resp.status, resp.read(), resp.geturl(), resp.headers
+            except urllib.error.HTTPError as e:
+                status, raw, final, hdrs = e.code, e.read(), url, e.headers
+            if 'bin' in q:
+                if status >= 400:
+                    return self.reply(502, ('Download failed: HTTP %d' % status).encode())
+                return self.reply(200, raw, 'application/octet-stream')
+            out = {'status': status, 'url': final, 'body': raw.decode('utf-8', 'replace'),
+                   'headers': {k.lower(): v for k, v in hdrs.items()}}
+            self.reply(200, json.dumps(out).encode('utf-8'), 'application/json')
+        except Exception as e:  # report to the extension instead of dropping the connection
+            self.reply(502, str(e).encode('utf-8', 'replace'))
+
+
+# External players, best first. mpv/VLC play nearly every format and (with yt-dlp) YouTube links.
+PLAYERS = [
+    ('mpv', lambda url, title: ['--force-media-title=' + title] if title else []),
+    ('vlc', lambda url, title: ['--meta-title=' + title] if title else []),
+    ('celluloid', lambda url, title: []),
+    ('haruna', lambda url, title: []),
+    ('totem', lambda url, title: []),
+]
+
+
+def launch_player(url, title='', player=''):
+    """player: 'vlc' or 'mpv' to use exactly that one; '' = FANOOS_PLAYER, else the first one installed."""
+    custom = os.environ.get('FANOOS_PLAYER')
+    if custom and not player:
+        subprocess.Popen([custom, url], start_new_session=True)
+        return
+    if player:
+        extra = dict(PLAYERS).get(player)
+        exe = shutil.which(player)
+        if not extra or not exe:
+            raise OSError(player + ' is not installed')
+        subprocess.Popen([exe] + extra(url, title) + [url], start_new_session=True)
+        return
+    for name, extra in PLAYERS:
+        exe = shutil.which(name)
+        if exe:
+            subprocess.Popen([exe] + extra(url, title) + [url], start_new_session=True)  # url is http(s), never an option
+            return
+    opener = shutil.which('xdg-open')
+    if not opener:
+        raise OSError('no mpv, vlc, celluloid, haruna, totem or xdg-open')
+    subprocess.Popen([opener, url], start_new_session=True)
+
+
+def start_server():
+    for port in range(PORT, PORT + 20):
+        try:
+            srv = http.server.ThreadingHTTPServer(('127.0.0.1', port), Handler)
+            break
+        except OSError:
+            continue
+    else:
+        sys.exit('fanoos: no free port between %d and %d' % (PORT, PORT + 19))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return 'http://127.0.0.1:%d/%s/index.html?shell=linux' % (srv.server_address[1], TOKEN)
+
+
+def open_webkit(url):
+    try:
+        import gi
+        gi.require_version('Gtk', '3.0')
+        try:
+            gi.require_version('WebKit2', '4.1')
+        except ValueError:
+            gi.require_version('WebKit2', '4.0')
+        from gi.repository import Gtk, Gdk, GLib, WebKit2
+    except (ImportError, ValueError):
+        return False
+    os.makedirs(DATA_DIR, exist_ok=True)
+    manager = WebKit2.WebsiteDataManager(base_data_directory=os.path.join(DATA_DIR, 'webkit'),
+                                         base_cache_directory=os.path.join(DATA_DIR, 'cache'))
+    view = WebKit2.WebView.new_with_context(WebKit2.WebContext.new_with_website_data_manager(manager))
+    settings = view.get_settings()
+    settings.set_property('enable-developer-extras', True)
+    settings.set_property('media-playback-requires-user-gesture', False)
+    win = Gtk.Window(title='Fanoos')
+    win.set_default_size(1280, 800)
+    win.add(view)
+    full = [False]
+
+    def on_key(_w, ev):
+        if ev.keyval == Gdk.KEY_F11:
+            full[0] = not full[0]
+            (win.fullscreen if full[0] else win.unfullscreen)()
+            return True
+        return False
+
+    win.connect('key-press-event', on_key)
+    win.connect('destroy', Gtk.main_quit)
+    GLib.timeout_add(300, lambda: (Gtk.main_quit() if quit_event.is_set() else True))
+    view.load_uri(url)
+    win.show_all()
+    Gtk.main()
+    return True
+
+
+def open_chromium(url):
+    for name in ('chromium', 'chromium-browser', 'google-chrome', 'google-chrome-stable', 'brave-browser', 'microsoft-edge'):
+        exe = shutil.which(name)
+        if exe:
+            profile = os.path.join(DATA_DIR, 'browser')
+            proc = subprocess.Popen([exe, '--app=' + url, '--user-data-dir=' + profile, '--autoplay-policy=no-user-gesture-required'])
+            threading.Thread(target=lambda: (quit_event.wait(), proc.terminate()), daemon=True).start()
+            proc.wait()
+            return True
+    return False
+
+
+def main():
+    url = start_server()
+    if '--server' in sys.argv:  # headless: print the URL and serve until killed or /__exit
+        print(url, flush=True)
+        quit_event.wait()
+        return
+    if open_webkit(url) or open_chromium(url):
+        return
+    print('Fanoos: no WebKitGTK or Chromium found, opening your default browser.\n'
+          'Install gir1.2-webkit2-4.1 for an app window. Close with Ctrl+C.\n' + url, flush=True)
+    webbrowser.open(url)
+    try:
+        quit_event.wait()
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == '__main__':
+    main()

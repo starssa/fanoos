@@ -1,0 +1,43 @@
+{
+  "id": "provider.youtube",
+  "name": "YouTube",
+  "version": "1.2.0",
+  "apiVersion": 1,
+  "type": "provider",
+  "main": "main.js",
+  "description": "Channels you choose, plus trending and search with a free YouTube API key. Plays in YouTube's official player.",
+  "author": "Fanoos",
+  "icon": "icon.svg",
+  "tvTypes": [
+    "other"
+  ],
+  "permissions": {
+    "hosts": [
+      "www.youtube.com",
+      "www.googleapis.com"
+    ]
+  },
+  "settings": [
+    {
+      "id": "channels",
+      "label": "Channels (links, @handles or UC… ids)",
+      "type": "text",
+      "default": "UCLA_DiR1FfKNvjuUpBHmylQ, UCAuUUnT6oDeKwE6v1NGQxug, UCsXVk37bltHxD1rDPwtNM8Q, UCHnyfMqiRRG1u-2MsSQLbXA",
+      "help": "Separate with commas. Example: https://www.youtube.com/@NASA, UCAuUUnT6oDeKwE6v1NGQxug. @handles need the API key below; channel links and UC… ids work without it. Defaults: NASA, TED, Kurzgesagt, Veritasium."
+    },
+    {
+      "id": "apiKey",
+      "label": "YouTube Data API key (optional)",
+      "type": "text",
+      "default": "",
+      "help": "Enables Trending and Search. Free from console.cloud.google.com → YouTube Data API v3."
+    },
+    {
+      "id": "region",
+      "label": "Trending region",
+      "type": "text",
+      "default": "MA",
+      "help": "Two-letter country code"
+    }
+  ]
+}

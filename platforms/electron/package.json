@@ -1,0 +1,36 @@
+{
+  "name": "fanoos-desktop",
+  "version": "0.2.30",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --linux"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "app.fanoos.mediacenter",
+    "productName": "Fanoos",
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "app/**"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "AudioVideo"
+    }
+  }
+}

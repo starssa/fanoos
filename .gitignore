@@ -1,0 +1,14 @@
+node_modules
+dist
+build
+public/repo
+platforms/electron/app
+platforms/electron/node_modules
+android
+ios
+dist-packages
+dist-editor
+
+# signing key: kept out of git (CI reads it from the ANDROID_KEYSTORE_B64 secret)
+*.keystore
+editor/public/fanoos-scraper.xpi

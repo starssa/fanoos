@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Allow Fanoos Studio?</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0d0d22; color: #ecebf7; font: 15px/1.5 system-ui, sans-serif; }
+    .card { max-width: 520px; background: #14163a; border: 1px solid #2b2f66; border-radius: 16px; padding: 28px; }
+    h1 { font-size: 20px; margin: 0 0 10px; display: flex; align-items: center; }
+    h1 img { width: 32px; margin-right: 10px; }
+    code { background: #0d0d22; padding: 2px 8px; border-radius: 6px; color: #9fd3ff; word-break: break-all; }
+    p { color: #c8c8e0; } small { color: #9c9cc4; }
+    button { padding: 10px 18px; border: 0; border-radius: 9px; font: 600 14px system-ui, sans-serif; cursor: pointer; margin-right: 8px; }
+    #allow { background: #e8a83a; color: #1a1206; } #deny { background: #272b5e; color: #ecebf7; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1><img src="icon-96.png" alt="" />Allow Fanoos Studio?</h1>
+    <p>The page <code id="origin"></code> wants the Fanoos Scraper extension to download web pages for its live preview.</p>
+    <p><small>Allow it only if this is your Fanoos Studio. Pages are downloaded without your cookies or logins. You can remove access in the extension's toolbar popup.</small></p>
+    <button id="allow">Allow</button><button id="deny">Deny</button>
+  </div>
+  <script src="approve.js"></script>
+</body>
+</html>

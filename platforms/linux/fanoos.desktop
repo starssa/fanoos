@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Fanoos
+GenericName=Media Center
+Comment=Media center with installable extensions
+Exec=fanoos
+Icon=fanoos
+Terminal=false
+Categories=AudioVideo;Video;Player;
+Keywords=media;video;tv;stream;

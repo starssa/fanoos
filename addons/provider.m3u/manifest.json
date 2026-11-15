@@ -1,0 +1,16 @@
+{
+  "id": "provider.m3u",
+  "name": "M3U Playlist",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "type": "provider",
+  "main": "main.js",
+  "description": "Play your own M3U/M3U8 playlist (IPTV you subscribe to, home streams, cameras).",
+  "author": "Fanoos",
+  "icon": "icon.svg",
+  "tvTypes": ["live"],
+  "permissions": { "hosts": ["*"] },
+  "settings": [
+    { "id": "playlist", "label": "Playlist URL", "type": "text", "default": "", "help": "http(s) link to an .m3u or .m3u8 playlist" }
+  ]
+}

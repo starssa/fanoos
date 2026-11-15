@@ -1,0 +1,9 @@
+{
+  "appId": "app.fanoos.mediacenter",
+  "appName": "Fanoos",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  },
+  "android": { "allowMixedContent": true }
+}

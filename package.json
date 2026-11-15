@@ -1,0 +1,35 @@
+{
+  "name": "fanoos-media-center",
+  "version": "0.2.39",
+  "private": true,
+  "type": "module",
+  "description": "Cross-platform media center: CloudStream-style UI, Kodi-style zip addons and repositories.",
+  "scripts": {
+    "addons": "node tools/build-addons.mjs",
+    "dev": "node tools/build-addons.mjs && vite",
+    "build": "node tools/build-addons.mjs && tsc --noEmit && vite build",
+    "test": "node tools/test-addons.mjs && node --no-warnings --experimental-strip-types tools/test-embeds.mjs && node --no-warnings --experimental-strip-types tools/test-extractors.mjs",
+    "prepare:tizen": "node tools/prepare-platform.mjs tizen",
+    "prepare:webos": "node tools/prepare-platform.mjs webos",
+    "prepare:electron": "node tools/prepare-platform.mjs electron",
+    "package:deb": "npm run build && sh tools/build-deb.sh",
+    "package:apk": "npm run build && sh tools/build-apk.sh",
+    "package:tizen": "npm run build && sh tools/build-tizen.sh",
+    "editor": "vite --config vite.editor.config.ts",
+    "build:editor": "node tools/build-scraper.mjs && tsc --noEmit && vite build --config vite.editor.config.ts",
+    "scraper": "node tools/build-scraper.mjs"
+  },
+  "dependencies": {
+    "hls.js": "^1.5.15",
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/theme-one-dark": "^6.1.3",
+    "codemirror": "^6.0.2",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0"
+  }
+}

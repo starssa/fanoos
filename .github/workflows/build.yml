@@ -1,0 +1,51 @@
+# Builds every package on each push; a tag like v0.2.40 also publishes them as a GitHub Release.
+name: Build
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - run: npm ci
+      - run: npm test
+      - name: Studio + scraper extension
+        run: |
+          npm run build:editor
+          mkdir -p dist-packages
+          (cd dist-editor && zip -qr ../dist-packages/fanoos-addon-studio.zip .)
+      - name: Samsung TV (.wgt)
+        run: npm run package:tizen
+      - name: Android (.apk)
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          # Same key as earlier builds (repo secret) so installed apps update in place; without it a new key is made.
+          if [ -n "$ANDROID_KEYSTORE_B64" ]; then echo "$ANDROID_KEYSTORE_B64" | base64 -d > platforms/android/test.keystore; else echo "::warning::ANDROID_KEYSTORE_B64 secret not set: APK signed with a new key"; fi
+          curl -sSfL -o apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.4.1/apktool_2.4.1.jar
+          APKTOOL_JAR=$PWD/apktool.jar sh tools/build-apk.sh
+      - name: Linux (.deb)
+        run: sh tools/build-deb.sh
+      - name: Name the files
+        run: |
+          V=$(node -p "require('./package.json').version")
+          S=$(node -p "require('./scraper-extension/manifest.json').version")
+          mkdir -p out
+          cp dist-packages/Fanoos-unsigned.wgt out/Fanoos-$V-unsigned.wgt
+          cp dist-packages/fanoos-$V.apk dist-packages/fanoos_${V}_all.deb dist-packages/fanoos-addon-studio.zip out/
+          cp dist-packages/fanoos-scraper.xpi out/fanoos-scraper-$S.xpi
+          ls -l out
+      - uses: actions/upload-artifact@v4
+        with: { name: fanoos-packages, path: out/* }
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with: { files: out/* }

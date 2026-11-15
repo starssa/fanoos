@@ -1,0 +1,55 @@
+{
+  "id": "provider.dailymotion",
+  "name": "Dailymotion",
+  "version": "1.3.0",
+  "apiVersion": 1,
+  "type": "provider",
+  "main": "main.js",
+  "description": "Trending, your chosen channels, categories and search from Dailymotion's public API. Plays in Dailymotion's official player.",
+  "author": "Fanoos",
+  "icon": "icon.svg",
+  "tvTypes": [
+    "other"
+  ],
+  "permissions": {
+    "hosts": [
+      "api.dailymotion.com"
+    ]
+  },
+  "settings": [
+    {
+      "id": "playerId",
+      "label": "Dailymotion player ID",
+      "type": "text",
+      "default": "",
+      "help": "Needed by Dailymotion's player. Free: sign in at dailymotion.com/partner → Players → Create a player → copy its ID (looks like x1ab2). Enable Autoplay in its settings."
+    },
+    {
+      "id": "creators",
+      "label": "Channels (usernames or links)",
+      "type": "text",
+      "default": "",
+      "help": "Separate with commas. Example: https://www.dailymotion.com/france24, euronews"
+    },
+    {
+      "id": "channels",
+      "label": "Category rows (comma separated)",
+      "type": "text",
+      "default": "news, sport, music, videogames",
+      "help": "Dailymotion channel ids, e.g. news, sport, music, videogames, fun, tv, kids, tech, animals, auto"
+    },
+    {
+      "id": "country",
+      "label": "Country for Trending (optional)",
+      "type": "text",
+      "default": "",
+      "help": "Two-letter code, e.g. MA, FR. Empty = worldwide"
+    },
+    {
+      "id": "family",
+      "label": "Family filter",
+      "type": "bool",
+      "default": true
+    }
+  ]
+}

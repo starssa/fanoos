@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { margin: 0; width: 260px; padding: 14px; background: #14163a; color: #ecebf7; font: 13px/1.45 system-ui, sans-serif; }
+    h1 { font-size: 15px; margin: 0 0 6px; display: flex; align-items: center; }
+    h1 img { width: 24px; height: 24px; margin-right: 8px; }
+    p { color: #9c9cc4; margin: 0 0 12px; }
+    button { width: 100%; padding: 9px; border: 0; border-radius: 8px; background: #e8a83a; color: #1a1206; font: 600 13px system-ui, sans-serif; cursor: pointer; }
+    .err { color: #ffb4b4; margin-top: 10px; }
+    .warn { color: #ffcf7a; } #perm { margin-bottom: 12px; } #grant { background: #272b5e; color: #ecebf7; }
+    #access h2 { font-size: 12px; color: #9c9cc4; margin: 16px 0 6px; font-weight: 600; }
+    .acc { display: flex; align-items: center; font-size: 12px; padding: 4px 0; word-break: break-all; }
+    .acc span { flex: 1; } .acc button { width: auto; padding: 2px 8px; margin-left: 6px; background: #272b5e; color: #ecebf7; }
+  </style>
+</head>
+<body>
+  <h1><img src="icon-48.png" alt="" />Fanoos Scraper</h1>
+  <p>Opens the scraper panel on this page. Your progress is kept while you move between the site's pages — click this button again on each page.</p>
+  <div id="perm" hidden>
+    <p class="warn">Fanoos Studio can't load sites yet: this extension isn't allowed to access websites (Firefox asks for this separately).</p>
+    <button id="grant">Allow access to all websites</button>
+  </div>
+  <button id="go">Open scraper on this page</button>
+  <div class="err" id="err"></div>
+  <div id="access"></div>
+  <script src="popup.js"></script>
+</body>
+</html>
