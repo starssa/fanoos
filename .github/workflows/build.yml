@@ -34,6 +34,11 @@ jobs:
           if [ -n "$ANDROID_KEYSTORE_B64" ]; then echo "$ANDROID_KEYSTORE_B64" | base64 -d > platforms/android/test.keystore; else echo "::warning::ANDROID_KEYSTORE_B64 secret not set: APK signed with a new key"; fi
           curl -sSfL -o apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.4.1/apktool_2.4.1.jar
           APKTOOL_JAR=$PWD/apktool.jar sh tools/build-apk.sh
+      - name: LG TV (.ipk)
+        run: |
+          npm run prepare:webos
+          node -e "const f='build/webos/appinfo.json',j=require('./'+f);j.version=require('./package.json').version;require('fs').writeFileSync(f,JSON.stringify(j,null,2))"
+          npx -y -p @webos-tools/cli@3 ares-package build/webos -o dist-packages
       - name: Linux (.deb)
         run: sh tools/build-deb.sh
       - name: Name the files
@@ -44,6 +49,7 @@ jobs:
           cp dist-packages/Fanoos-unsigned.wgt out/Fanoos-$V-unsigned.wgt
           cp build/fanoos-unsigned.apk out/fanoos-$V-unsigned.apk # for signing with your own key
           cp dist-packages/fanoos-$V.apk dist-packages/fanoos_${V}_all.deb dist-packages/fanoos-addon-studio.zip out/
+          cp dist-packages/app.fanoos.mediacenter_${V}_all.ipk out/Fanoos-$V-webos.ipk
           cp dist-packages/fanoos-scraper.xpi out/fanoos-scraper-$S.xpi
           ls -l out
           echo "V=$V" >> $GITHUB_ENV
@@ -55,4 +61,34 @@ jobs:
           tag_name: v${{ env.V }}
           name: Fanoos ${{ env.V }}
           target_commitish: ${{ github.sha }}
+          files: out/*
+
+  windows:
+    needs: build # the release exists by then; this adds the Windows files to it
+    runs-on: windows-latest
+    defaults: { run: { shell: bash } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build && npm run prepare:electron
+      - name: Installer + portable .exe
+        working-directory: platforms/electron
+        env: { CSC_IDENTITY_AUTO_DISCOVERY: 'false' } # unsigned: Windows SmartScreen asks once
+        run: |
+          V=$(node -p "require('../../package.json').version")
+          npm pkg set version=$V
+          npm install --no-audit --no-fund
+          npx electron-builder --win --publish never
+          mkdir -p ../../out
+          cp "dist/Fanoos Setup $V.exe" ../../out/Fanoos-$V-windows-setup.exe
+          cp "dist/Fanoos $V.exe" ../../out/Fanoos-$V-windows-portable.exe
+          echo "V=$V" >> $GITHUB_ENV
+      - uses: actions/upload-artifact@v4
+        with: { name: fanoos-windows, path: out/* }
+      - if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.V }}
           files: out/*
