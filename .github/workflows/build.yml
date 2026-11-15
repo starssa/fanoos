@@ -10,6 +10,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      HAS_KEY: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,6 +48,7 @@ jobs:
           ls -l out
       - uses: actions/upload-artifact@v4
         with: { name: fanoos-packages, path: out/* }
-      - if: startsWith(github.ref, 'refs/tags/')
+      # Only with the signing key: a release APK signed with another key would not update installed apps.
+      - if: startsWith(github.ref, 'refs/tags/') && env.HAS_KEY == 'true'
         uses: softprops/action-gh-release@v2
         with: { files: out/* }
