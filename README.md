@@ -14,7 +14,7 @@ Fanoos ships with no content. Two example addons are included:
 Ready-made packages are on the [Releases](https://github.com/starssa/fanoos/releases) page:
 `.apk` (Android / TV box), `.wgt` (Samsung Tizen, sign it for your TV), `.deb` (Linux),
 `fanoos-scraper-*.xpi` (browser extension) and `fanoos-addon-studio.zip`. GitHub Actions rebuilds them on
-every push; pushing a tag such as `v0.2.40` publishes a new release.
+every push to `main` and publishes them as release `v<version in package.json>`.
 
 ## Quick start
 

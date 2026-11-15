@@ -1,4 +1,5 @@
-# Builds every package on each push; a tag like v0.2.40 also publishes them as a GitHub Release.
+# Builds every package on each push to main and publishes them as the release v<package.json version>
+# (a new version number = a new release; the same number replaces that release's files).
 name: Build
 on:
   push:
@@ -45,8 +46,13 @@ jobs:
           cp dist-packages/fanoos-$V.apk dist-packages/fanoos_${V}_all.deb dist-packages/fanoos-addon-studio.zip out/
           cp dist-packages/fanoos-scraper.xpi out/fanoos-scraper-$S.xpi
           ls -l out
+          echo "V=$V" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with: { name: fanoos-packages, path: out/* }
-      - if: startsWith(github.ref, 'refs/tags/')
+      - if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
-        with: { files: out/* }
+        with:
+          tag_name: v${{ env.V }}
+          name: Fanoos ${{ env.V }}
+          target_commitish: ${{ github.sha }}
+          files: out/*
