@@ -30,7 +30,15 @@
         "AppImage",
         "deb"
       ],
-      "category": "AudioVideo"
+      "category": "AudioVideo",
+      "artifactName": "Fanoos-${version}-linux.${ext}"
+    },
+    "icon": "app/icon.png",
+    "nsis": {
+      "artifactName": "Fanoos-${version}-windows-setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "Fanoos-${version}-windows-portable.${ext}"
     }
   }
 }

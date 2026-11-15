@@ -48,7 +48,8 @@ jobs:
           mkdir -p out
           cp dist-packages/Fanoos-unsigned.wgt out/Fanoos-$V-unsigned.wgt
           cp build/fanoos-unsigned.apk out/fanoos-$V-unsigned.apk # for signing with your own key
-          cp dist-packages/fanoos-$V.apk dist-packages/fanoos_${V}_all.deb dist-packages/fanoos-addon-studio.zip out/
+          cp dist-packages/fanoos-$V.apk dist-packages/fanoos_${V}_all.deb out/
+          cp dist-packages/fanoos-addon-studio.zip out/Fanoos-Studio-$V-web.zip
           cp dist-packages/app.fanoos.mediacenter_${V}_all.ipk out/Fanoos-$V-webos.ipk
           cp dist-packages/fanoos-scraper.xpi out/fanoos-scraper-$S.xpi
           ls -l out
@@ -61,32 +62,48 @@ jobs:
           tag_name: v${{ env.V }}
           name: Fanoos ${{ env.V }}
           target_commitish: ${{ github.sha }}
+          body_path: .github/release-notes.md
           files: out/*
 
-  windows:
-    needs: build # the release exists by then; this adds the Windows files to it
-    runs-on: windows-latest
+  desktop:
+    needs: build # the release exists by then; these add the desktop files to it
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, app: '--win', studio: '--win' }
+          - { os: ubuntu-latest, app: '--linux AppImage', studio: '--linux' }
+          - { os: macos-latest, app: '', studio: '--mac --x64 --arm64' }
+    runs-on: ${{ matrix.os }}
     defaults: { run: { shell: bash } }
+    env: { CSC_IDENTITY_AUTO_DISCOVERY: 'false' } # unsigned: Windows SmartScreen / macOS Gatekeeper ask once
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - run: npm run build && npm run prepare:electron
-      - name: Installer + portable .exe
-        working-directory: platforms/electron
-        env: { CSC_IDENTITY_AUTO_DISCOVERY: 'false' } # unsigned: Windows SmartScreen asks once
+      - run: echo "V=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+      - name: Fanoos app
+        if: matrix.app != ''
         run: |
-          V=$(node -p "require('../../package.json').version")
-          npm pkg set version=$V
-          npm install --no-audit --no-fund
-          npx electron-builder --win --publish never
-          mkdir -p ../../out
-          cp "dist/Fanoos Setup $V.exe" ../../out/Fanoos-$V-windows-setup.exe
-          cp "dist/Fanoos $V.exe" ../../out/Fanoos-$V-windows-portable.exe
-          echo "V=$V" >> $GITHUB_ENV
+          npm run build && npm run prepare:electron
+          cd platforms/electron && npm pkg set version=$V && npm install --no-audit --no-fund
+          npx electron-builder ${{ matrix.app }} --publish never
+      - name: Fanoos Studio
+        run: |
+          npm run build:editor && node tools/prepare-platform.mjs studio
+          cd platforms/studio && npm pkg set version=$V && npm install --no-audit --no-fund
+          npx electron-builder ${{ matrix.studio }} --publish never
+      - name: Collect
+        run: |
+          mkdir -p out
+          cp platforms/*/dist/*.exe platforms/*/dist/*.AppImage platforms/*/dist/*.dmg out/ 2>/dev/null || true
+          rm -f out/*uninstaller* out/__uninstaller*
+          ls -l out
       - uses: actions/upload-artifact@v4
-        with: { name: fanoos-windows, path: out/* }
+        with:
+          name: fanoos-desktop-${{ matrix.os }}
+          path: out/*
       - if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:

@@ -1,0 +1,24 @@
+{
+  "name": "fanoos-studio",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Fanoos Addon Studio",
+  "author": "Fanoos",
+  "main": "main.cjs",
+  "scripts": { "start": "electron ." },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "app.fanoos.studio",
+    "productName": "Fanoos Studio",
+    "icon": "app/icon-512.png",
+    "files": ["main.cjs", "app/**"],
+    "win": { "target": ["nsis", "portable"] },
+    "nsis": { "artifactName": "Fanoos-Studio-${version}-windows-setup.${ext}" },
+    "portable": { "artifactName": "Fanoos-Studio-${version}-windows-portable.${ext}" },
+    "linux": { "target": ["AppImage"], "category": "Development", "artifactName": "Fanoos-Studio-${version}-linux.${ext}" },
+    "mac": { "target": ["dmg"], "category": "public.app-category.developer-tools", "artifactName": "Fanoos-Studio-${version}-mac-${arch}.${ext}" }
+  }
+}
