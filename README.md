@@ -13,7 +13,7 @@ Fanoos ships with no content. Two example addons are included:
 
 Ready-made packages are on the [Releases](https://github.com/starssa/fanoos/releases) page:
 `.apk` (Android / TV box), `.wgt` (Samsung Tizen: install it with [Apps2Samsung](https://github.com/Apps2Samsung/Apps2Samsung), which signs it for your TV), `.AppImage` / `.deb` (Linux), `-windows-setup.exe` / `-windows-portable.exe` (Windows), `-webos.ipk` (LG webOS),
-`fanoos-scraper-*.xpi` (browser extension) and Fanoos Studio for Windows, Linux, macOS or the web (`-web.zip`).
+`fanoos-scraper-*.xpi` / `-chrome.zip` (browser extension for Firefox / Chrome), `-ios-unsigned.ipa` (iPhone/iPad, sideload with AltStore or Sideloadly) and Fanoos Studio for Windows, Linux, macOS or the web (`-web.zip`).
 The release page explains which file fits which device. GitHub Actions rebuilds them on
 every push to `main` and publishes them as release `v<version in package.json>`.
 

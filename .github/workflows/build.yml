@@ -52,6 +52,7 @@ jobs:
           cp dist-packages/fanoos-addon-studio.zip out/Fanoos-Studio-$V-web.zip
           cp dist-packages/app.fanoos.mediacenter_${V}_all.ipk out/Fanoos-$V-webos.ipk
           cp dist-packages/fanoos-scraper.xpi out/fanoos-scraper-$S.xpi
+          cp dist-packages/fanoos-scraper-chrome.zip out/fanoos-scraper-$S-chrome.zip
           ls -l out
           echo "V=$V" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
@@ -104,6 +105,41 @@ jobs:
         with:
           name: fanoos-desktop-${{ matrix.os }}
           path: out/*
+      - if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.V }}
+          files: out/*
+
+  ios:
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: echo "V=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+      - name: Capacitor iOS project
+        run: |
+          npm run build
+          npm install --no-save @capacitor/core@6 @capacitor/cli@6 @capacitor/ios@6 @capacitor/app@6
+          npx cap add ios
+          npx cap sync ios
+          # LAN repositories and the computer relay are plain http.
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" ios/App/App/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" ios/App/App/Info.plist
+      - name: Unsigned .ipa
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -sdk iphoneos \
+            -derivedDataPath build/ios MARKETING_VERSION=$V CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          mkdir -p ipa/Payload out
+          cp -R build/ios/Build/Products/Release-iphoneos/App.app ipa/Payload/
+          (cd ipa && zip -qr ../out/Fanoos-$V-ios-unsigned.ipa Payload)
+          ls -l out
+      - uses: actions/upload-artifact@v4
+        with: { name: fanoos-ios, path: out/* }
       - if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
