@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Google Play Services client version Android's WebView checks for (see AndroidManifest.xml). Its value is the one the
+         WebView expects, shown in its error when wrong ("Expected … but found …"); 213606000 matches recent WebView builds. -->
+    <integer name="google_play_services_version">213606000</integer>
+</resources>

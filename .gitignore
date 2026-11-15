@@ -4,8 +4,8 @@ build
 public/repo
 platforms/electron/app
 platforms/electron/node_modules
-android
-ios
+/android
+/ios
 dist-packages
 dist-editor
 
