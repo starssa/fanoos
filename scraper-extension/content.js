@@ -314,7 +314,9 @@
   function autoId() { return 'provider.' + (slug(S.name) || slug(new URL(S.site).hostname.replace(/^www\./, '')) || 'scraped'); }
   function addonId() { return S.id && ID_RE.test(S.id) ? S.id : autoId(); }
   function config() {
-    var c = { site: S.site, type: S.type, rows: S.rows, list: S.list };
+    // Default cards (search, rows without their own): the first row's, even when they are that row's own.
+    var def = S.list && S.list.item ? S.list : S.rows.map(function (r, ri) { return rowList(ri); }).filter(function (L) { return L && L.item; })[0] || S.list;
+    var c = { site: S.site, type: S.type, rows: S.rows, list: def };
     if (S.search) c.search = S.search;
     if (S.details && (S.details.title || S.details.plot || S.details.poster || S.details.episodes || S.details.watch)) c.details = S.details;
     if (S.links && (S.links.video || S.links.iframe || S.links.pattern || S.links.source)) c.links = S.links;
