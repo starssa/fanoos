@@ -346,9 +346,13 @@
   }
   function problems() {
     var p = [];
-    if (!S.list) p.push('Pick a poster card on a list page (step 1).');
-    else if (!S.list.link) p.push('The cards have no link — re-pick "Link" in step 1.');
+    // Each row's own cards, those it shares, or the default (S.list): every row needs picked cards with a link.
+    var title = function (ri) { return '"' + (S.rows[ri].title || 'row ' + (ri + 1)) + '"'; };
+    var noCards = [], noLink = [];
+    S.rows.forEach(function (r, ri) { var L = rowList(ri); if (!L || !L.item) noCards.push(title(ri)); else if (!L.link) noLink.push(title(ri)); });
     if (!S.rows.length) p.push('Add at least one Home row (step 1).');
+    if (noCards.length) p.push('No poster cards picked for ' + noCards.join(', ') + ': in 1 List tick the row and press ⚙, then pick a poster card on its page.');
+    if (noLink.length) p.push('The cards of ' + noLink.join(', ') + ' have no link: re-pick "Link" in the row\'s ⚙.');
     return p;
   }
   function download() {
@@ -514,7 +518,7 @@
       });
       var handle = el('span', { class: 'grip', draggable: 'true', title: 'Drag to move. Drop on the right half of a line to make it a tab.' }, '⋮⋮');
       var cf = l.lvl ? -2 : cardsFrom(ri);
-      var tagText = l.list ? 'own' : cf < 0 ? (S.list ? 'default' : 'no cards') : '= ' + S.rows[cf].title;
+      var tagText = l.list ? (l.list.item ? 'own' : 'no cards') : cf < 0 ? (S.list ? 'default' : 'no cards') : '= ' + S.rows[cf].title;
       var tag = l.lvl ? null : el('span', { class: 'cards-tag' + (l.list ? ' own' : ''), title: 'Cards: ' + tagText + ' (tick it, then ⚙ or Cards… in the toolbar)' },
         cf >= 0 && !l.list ? '= ' : tagText, cf >= 0 && !l.list ? el('bdi', {}, S.rows[cf].title) : null); // bdi: an Arabic title keeps "=" in front
       if (l.lvl) handle.textContent = '↳';
@@ -599,7 +603,12 @@
   function applyCards(s, ri, v) {
     var r = s.rows[ri];
     if (!r) return;
-    if (v === 'own') { if (!r.list) r.list = JSON.parse(JSON.stringify(rowList(ri) || {})); delete r.cardsOf; return; }
+    if (v === 'own') {
+      var cur = rowList(ri);
+      if (!r.list && cur && cur.item) r.list = JSON.parse(JSON.stringify(cur)); // nothing picked yet: the row's ⚙ picks its cards
+      delete r.cardsOf;
+      return;
+    }
     var j = +v;
     if (j === ri || !s.rows[j]) return;
     delete r.list;
@@ -1351,7 +1360,7 @@
     return el('button', { class: 'lv-card', title: m.title, onclick: function () { liveDetails(m.id, m.title, back); } }, el('div', { class: 'lv-poster' }, img), el('span', {}, m.title));
   }
   function liveHome() {
-    if (!S.list) return liveShow('Live view', null, [el('div', { class: 'help' }, 'Pick a poster card in 1 List to see the addon\'s Home here.')]);
+    if (!S.rows.some(function (r, ri) { var L = rowList(ri); return L && L.item; })) return liveShow('Live view', null, [el('div', { class: 'help' }, 'Pick a poster card in 1 List to see the addon\'s Home here.')]);
     liveRun(S.name, null, function (api) { return api.getHome(); }, function (rows) {
       var out = [];
       if (S.search && S.search.url) {
