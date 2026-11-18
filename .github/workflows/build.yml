@@ -57,6 +57,16 @@ jobs:
           echo "V=$V" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with: { name: fanoos-packages, path: out/* }
+      - name: Remove older scraper files from all releases (only the newest scraper stays)
+        if: github.ref == 'refs/heads/main'
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          S=$(node -p "require('./scraper-extension/manifest.json').version")
+          for tag in $(gh release list -R "$GITHUB_REPOSITORY" --limit 100 --json tagName -q '.[].tagName'); do
+            gh release view "$tag" -R "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' \
+              | grep -E '^fanoos-scraper-|^fanoos-addon-studio\.zip$' | grep -vE "^fanoos-scraper-$S(\.xpi|-chrome\.zip)$" \
+              | while read -r a; do echo "delete $tag/$a"; gh release delete-asset "$tag" "$a" -R "$GITHUB_REPOSITORY" -y; done
+          done
       - if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:

@@ -78,6 +78,8 @@
     return [];
   }
   function qs(sel, root) { return qsa(sel, root)[0] || null; }
+  // el.closest() for selectors that may use :contains / || (not CSS, so closest() would throw).
+  function closestQ(t, sel) { var all = qsa(sel); while (t && all.indexOf(t) < 0) t = t.parentElement; return t || null; }
   function count(sel) { return qsa(sel).length; }
   /** Selector for all cards of this list, narrowed by the parent when the same card markup appears elsewhere. */
   // loose: never anchor on the parent's id (episode lists repeated per season tab must all match).
@@ -685,7 +687,7 @@
     var repick = function (key, label, attrFor) {
       return function () {
         pick('Click the ' + label + ' inside a card', function (t) {
-          var item = t.closest(L.item);
+          var item = closestQ(t, L.item);
           if (!item) { status('That is outside the cards. Click inside one of the green cards.', 'bad'); return; }
           var target = key === 'link' ? (t.closest('a[href]') && item.contains(t.closest('a[href]')) ? t.closest('a[href]') : t) : t;
           edit(function (l) { l[key] = { sel: relSelector(item, target), attr: attrFor(target) }; });
@@ -748,14 +750,14 @@
   function findMenus() {
     var own = function (li) { return Array.prototype.some.call(li.querySelectorAll('a[href]'), usable); };
     var lists = Array.prototype.filter.call(document.querySelectorAll('ul, ol'), function (ul) {
-      if (S.list && S.list.item && ul.closest(S.list.item)) return false;
+      if (S.list && S.list.item && closestQ(ul, S.list.item)) return false;
       return Array.prototype.filter.call(ul.children, function (li) { return li.tagName === 'LI' && own(li); }).length >= 3;
     });
     // Menus that are links side by side, not a list (<nav><a>Home</a><a>Movies</a>…): their box, entries being the links.
     var bars = [];
     Array.prototype.forEach.call(document.querySelectorAll('a[href]'), function (a) {
       var p = a.parentElement;
-      if (!p || bars.indexOf(p) >= 0 || /^(UL|OL)$/.test(p.tagName) || (S.list && S.list.item && p.closest(S.list.item))) return;
+      if (!p || bars.indexOf(p) >= 0 || /^(UL|OL)$/.test(p.tagName) || (S.list && S.list.item && closestQ(p, S.list.item))) return;
       if (Array.prototype.filter.call(p.children, function (c) { return c.tagName === 'A' && usable(c); }).length >= 3) bars.push(p);
     });
     lists = lists.concat(bars);
@@ -867,14 +869,14 @@
     c.appendChild(el('p', { class: 'help' }, 'Click one season (tab, link or drop-down), then one episode. No season list on the site? Just pick the episodes. Movies: skip this.'));
     var se = D.seasons, seInfo = '—';
     if (se) {
-      var seasons = document.querySelectorAll(se.item);
+      var seasons = qsa(se.item);
       var first = seasons[0];
       var how = se.link && se.link.attr === 'value' ? 'drop-down → season pages' : se.link ? 'links → season pages' : 'tabs on this page';
       seInfo = seasons.length + ' found · ' + how;
       if (first && se.panel && ep) {
         var target = scraperVal(nodeOf(within(first, se.panel)), se.panel).replace(/^#/, '');
         var panel = target && document.getElementById(target);
-        seInfo += panel ? ' · season 1: ' + panel.querySelectorAll(ep.item).length + ' episodes' : ' · ⚠ tab panel not found (loaded by JavaScript?)';
+        seInfo += panel ? ' · season 1: ' + qsa(ep.item, panel).length + ' episodes' : ' · ⚠ tab panel not found (loaded by JavaScript?)';
       }
     }
     c.appendChild(showOn(el('div', { class: 'field' }, el('span', { class: 'lbl' }, 'Seasons'),
@@ -896,7 +898,7 @@
     function pickInside(key, itemSel, label) {
       return function () {
         pick('Click the ' + label + ' inside one ' + (key === 'seasons' ? 'season' : 'episode'), function (t) {
-          var item = t.closest(itemSel);
+          var item = closestQ(t, itemSel);
           if (!item) return status('That is outside the ' + key + ' you picked (outlined). Click inside one of them.', 'bad');
           set(function (s) { s.details[key].title = { sel: relSelector(item, t), attr: t.tagName === 'IMG' ? 'alt|title' : 'text|title' }; });
         });
@@ -904,14 +906,14 @@
     }
     if (se && !(se.link && se.link.attr === 'value')) { // a drop-down already reads its option text
       // The season the page shows now (marked active/selected), else the first one.
-      var allSe = Array.prototype.slice.call(document.querySelectorAll(se.item));
+      var allSe = qsa(se.item);
       var firstSe = allSe.filter(function (n) {
         return n.matches('.active,.selected,.current,.is-active,[aria-selected=true],[aria-current]') || n.querySelector('.active,.selected,.current,.is-active,[aria-selected=true],[aria-current]');
       })[0] || allSe[0];
       c.appendChild(fieldRow('Season title', se.title, firstSe ? readField(firstSe, se.title) : '', pickInside('seasons', se.item, 'season title'), null, se.item));
     }
     if (ep) {
-      var firstEp = document.querySelector(ep.item);
+      var firstEp = qs(ep.item);
       c.appendChild(fieldRow('Episode title', ep.title, firstEp ? readField(firstEp, ep.title) : '', pickInside('episodes', ep.item, 'episode title'), null, ep.item));
     }
   }
@@ -994,7 +996,7 @@
   }
 
   function nodesIn(root) {
-    var q = function (sel) { try { return Array.prototype.map.call(root.querySelectorAll(sel), nodeOf); } catch (e) { return []; } };
+    var q = function (sel) { try { return qsa(sel, root).map(nodeOf); } catch (e) { return []; } };
     var src = S.links.source;
     return { video: q(S.links.video || SCRAPER_QUERIES.video), iframe: q(S.links.iframe || SCRAPER_QUERIES.iframe), servers: q(SCRAPER_QUERIES.servers),
       picked: src ? q(src.sel) : [], pickedAttr: src && src.attr };
@@ -1065,7 +1067,7 @@
   function tabVideo(c) {
     // ① Watch link → watch page, ② its source cards, ③ the sources found on this page.
     var W = S.details && S.details.watch, wn = null;
-    try { wn = W && W.sel ? document.querySelector(W.sel) : null; } catch (e) { wn = null; }
+    try { wn = W && W.sel ? qs(W.sel) : null; } catch (e) { wn = null; }
     // On the watch page itself, its own frames are not another watch page.
     var onWatch = !!(S.watchPage && S.watchPage.url === location.href.split('#')[0]);
     var watchUrlHere = wn && !onWatch ? absUrl(watchLink(scraperVal(nodeOf(wn), W)), location.href) : '';
