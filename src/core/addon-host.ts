@@ -11,6 +11,23 @@ const CALL_TIMEOUT = 45000;
 
 type Pending = { res: (v: any) => void; rej: (e: Error) => void; timer: ReturnType<typeof setTimeout> };
 
+/** `:contains("text")` (jQuery style, also `:contains(., "text")`): elements whose text includes it. Not CSS, so done
+ *  here; the Scraper has the same function (scraper-extension/content.js). A selector after it searches inside each match.
+ *  shortcut: no "," lists or "+"/"~" right after :contains(…), use "||" or put them before it. */
+export function queryAll(root: ParentNode, sel: string): Element[] {
+  const m = /:contains\(\s*(?:\.\s*,\s*)?(["'])((?:(?!\1).)*)\1\s*\)/.exec(sel);
+  if (!m) return Array.prototype.slice.call(root.querySelectorAll(sel));
+  const head = sel.slice(0, m.index), rest = sel.slice(m.index + m[0].length);
+  const more = /^(?:"[^"]*"|'[^']*'|\([^)]*\)|[^\s>+~,])*/.exec(rest)![0], tail = rest.slice(more.length);
+  let base = head + more;
+  if (!base || /[\s>+~]$/.test(base)) base += '*';
+  const found = queryAll(root, base).filter((e) => (e.textContent || '').indexOf(m[2]) >= 0);
+  if (!tail.trim()) return found;
+  const out: Element[] = [];
+  for (const e of found) for (const x of queryAll(e, ':scope' + tail)) if (out.indexOf(x) < 0) out.push(x);
+  return out;
+}
+
 export class AddonHost {
   readonly ready: Promise<string[]>;
   private worker: Worker;
@@ -105,7 +122,7 @@ export class AddonHost {
       }
       case 'html.select': {
         const doc = new DOMParser().parseFromString(String(args[0]), 'text/html');
-        const nodes = doc.querySelectorAll(String(args[1]));
+        const nodes = queryAll(doc, String(args[1]));
         // args[2]: selectors inside each match; their first match comes back as node.sub[i] (one parse and one
         // message for a whole page of cards instead of one per card field).
         const subs = Array.isArray(args[2]) ? (args[2] as unknown[]).map(String) : null;
@@ -120,7 +137,7 @@ export class AddonHost {
           const node: Record<string, unknown> = { ...data(el), html: el.innerHTML };
           if (subs) node.sub = subs.map((sel) => {
             if (!sel) return data(el);
-            try { const m = el.querySelector(sel); return m ? data(m) : null; } catch { return null; }
+            try { const m = queryAll(el, sel)[0]; return m ? data(m) : null; } catch { return null; }
           });
           out.push(node);
         }

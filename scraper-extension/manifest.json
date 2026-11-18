@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Fanoos Scraper",
-  "version": "1.50.1",
+  "version": "1.51.0",
   "description": "Point and click on a video site to generate a Fanoos addon, and let Fanoos Studio preview any site.",
   "icons": {
     "48": "icon-48.png",

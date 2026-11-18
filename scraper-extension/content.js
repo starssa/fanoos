@@ -53,11 +53,27 @@
     return null;
   }
   // Selectors may hold "A || B" (the first that finds something), as in the addon.
+  // `:contains("text")` (jQuery style, also `:contains(., "text")`): elements whose text includes it. Not CSS, so done
+  // here; the app has the same function (src/core/addon-host.ts). A selector after it searches inside each match.
+  // shortcut: no "," lists or "+"/"~" right after :contains(…), use "||" or put them before it.
+  function queryAll(root, sel) {
+    var m = /:contains\(\s*(?:\.\s*,\s*)?(["'])((?:(?!\1).)*)\1\s*\)/.exec(sel);
+    if (!m) return Array.prototype.slice.call(root.querySelectorAll(sel));
+    var head = sel.slice(0, m.index), rest = sel.slice(m.index + m[0].length);
+    var more = /^(?:"[^"]*"|'[^']*'|\([^)]*\)|[^\s>+~,])*/.exec(rest)[0], tail = rest.slice(more.length);
+    var base = head + more;
+    if (!base || /[\s>+~]$/.test(base)) base += '*';
+    var found = queryAll(root, base).filter(function (e) { return (e.textContent || '').indexOf(m[2]) >= 0; });
+    if (!tail.trim()) return found;
+    var out = [];
+    found.forEach(function (e) { queryAll(e, ':scope' + tail).forEach(function (x) { if (out.indexOf(x) < 0) out.push(x); }); });
+    return out;
+  }
   function qsa(sel, root) {
     root = root || document;
     var alts = String(sel).split(/\s*\|\|\s*/).filter(Boolean);
     for (var i = 0; i < alts.length; i++) {
-      try { var n = root.querySelectorAll(alts[i]); if (n.length || i === alts.length - 1) return Array.prototype.slice.call(n); } catch (e) { /* next */ }
+      try { var n = queryAll(root, alts[i]); if (n.length || i === alts.length - 1) return n; } catch (e) { /* next */ }
     }
     return [];
   }
@@ -224,7 +240,7 @@
   }
   function badSel(v) {
     var alts = String(v || '').split(/\s*\|\|\s*/).filter(Boolean);
-    for (var i = 0; i < alts.length; i++) { try { document.createDocumentFragment().querySelector(alts[i]); } catch (e) { return alts[i]; } }
+    for (var i = 0; i < alts.length; i++) { try { queryAll(document.createDocumentFragment(), alts[i]); } catch (e) { return alts[i]; } }
     return '';
   }
   // :has() works here but not in older TV boxes (Android WebView before 105): Fanoos would find nothing there.
@@ -1308,9 +1324,9 @@
       html: { select: function (h, sel, subs) {
         try {
           var d = new DOMParser().parseFromString(String(h), 'text/html');
-          return Promise.resolve(Array.prototype.slice.call(d.querySelectorAll(sel), 0, 1000).map(function (n) {
+          return Promise.resolve(queryAll(d, sel).slice(0, 1000).map(function (n) {
             var o = nodeOf(n);
-            if (subs) o.sub = subs.map(function (x) { if (!x) return nodeOf(n); try { var m = n.querySelector(x); return m ? nodeOf(m) : null; } catch (e) { return null; } });
+            if (subs) o.sub = subs.map(function (x) { if (!x) return nodeOf(n); try { var m = queryAll(n, x)[0]; return m ? nodeOf(m) : null; } catch (e) { return null; } });
             return o;
           }));
         } catch (e) { return Promise.reject(e); }
