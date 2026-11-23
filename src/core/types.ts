@@ -1,7 +1,7 @@
 // Host API level. Bump when the addon API changes incompatibly
 // (same role as Kodi's xbmc.python version or CloudStream's apiVersion).
 export const HOST_API_VERSION = 1;
-export const APP_VERSION = '0.2.40';
+export const APP_VERSION = '0.2.41';
 
 export type AddonType = 'provider' | 'extractor';
 export type TvType = 'movie' | 'series' | 'anime' | 'live' | 'other';

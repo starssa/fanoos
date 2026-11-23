@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
-        id="http://fanoos.app/mediacenter" version="0.2.40" viewmodes="maximized">
+        id="http://fanoos.app/mediacenter" version="0.2.41" viewmodes="maximized">
   <tizen:application id="FanoosMC01.Fanoos" package="FanoosMC01" required_version="2.3"/>
   <content src="index.html"/>
   <icon src="icon.png"/>

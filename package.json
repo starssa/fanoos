@@ -1,6 +1,6 @@
 {
   "name": "fanoos-media-center",
-  "version": "0.2.40",
+  "version": "0.2.41",
   "private": true,
   "type": "module",
   "description": "Cross-platform media center: CloudStream-style UI, Kodi-style zip addons and repositories.",

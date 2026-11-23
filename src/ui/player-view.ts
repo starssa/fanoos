@@ -195,10 +195,13 @@ export async function openPlayer(opts: { addonId: string; item: MediaDetails; ep
   } }, fill);
   const bar = h('div', { class: 'player-controls', style: { display: 'none' } }, playBtn, cur, track, len);
   const tick = () => {
-    const d = video.duration;
-    cur.textContent = fmt(video.currentTime);
+    if (overlay && overlay.classList.contains('idle')) return; // hidden bar: no repaint over the playing video
+    const d = video.duration, t = player ? player.time : video.currentTime;
+    cur.textContent = fmt(t);
     len.textContent = isFinite(d) ? fmt(d) : 'Live';
-    fill.style.width = (isFinite(d) && d ? (video.currentTime / d) * 100 : 0) + '%';
+    const f = 'scaleX(' + (isFinite(d) && d ? Math.min(1, t / d) : 0) + ')'; // transform: no layout, GPU only
+    fill.style.webkitTransform = f;
+    fill.style.transform = f;
   };
   video.addEventListener('timeupdate', tick);
   video.addEventListener('durationchange', tick);
@@ -221,6 +224,7 @@ export async function openPlayer(opts: { addonId: string; item: MediaDetails; ep
   const ov = overlay;
   wake = () => {
     ov.classList.remove('idle');
+    tick();
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => { if (player && (player.isEmbed || !stopped())) ov.classList.add('idle'); }, 4000);
   };

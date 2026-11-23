@@ -33,6 +33,9 @@ export class Player {
   // YouTube: official embed driven through its postMessage API (no stream extraction).
   private yt: HTMLIFrameElement | null = null;
   private ytTime = 0;
+  /** Where held-down / repeated seek keys are heading; applied once they stop (each real seek costs TVs a rebuffer). */
+  private seekTarget = -1;
+  private seekTimer = 0;
   private ytDuration = 0;
   private ytPaused = false;
   // Dailymotion's player and generic web players: no host-page control API, so remote keys can't drive them.
@@ -46,7 +49,7 @@ export class Player {
 
   get isYouTube() { return !!this.yt; }
   get isEmbed() { return !!(this.yt || this.passive); }
-  get time() { return this.yt ? this.ytTime : this.video.currentTime; }
+  get time() { return this.yt ? this.ytTime : this.seekTarget >= 0 ? this.seekTarget : this.video.currentTime; }
   get duration() { return this.yt ? this.ytDuration : this.video.duration; }
 
   togglePlay() {
@@ -65,7 +68,11 @@ export class Player {
     const dur = this.duration;
     if (isFinite(dur) && dur > 0) t = Math.min(dur - 1, t); // unknown duration (NaN/Infinity): don't clamp
     t = Math.max(0, t);
-    if (this.yt) { this.ytTime = t; this.ytCommand('seekTo', [t, true]); } else this.video.currentTime = t;
+    if (this.yt) { this.ytTime = t; this.ytCommand('seekTo', [t, true]); return; }
+    this.seekTarget = t;
+    this.video.dispatchEvent(new Event('timeupdate')); // the control bar shows the target at once
+    clearTimeout(this.seekTimer);
+    this.seekTimer = window.setTimeout(() => { const to = this.seekTarget; this.seekTarget = -1; if (to >= 0) this.video.currentTime = to; }, 600);
   }
 
   private ytCommand(func: string, args: unknown[] = []) {
@@ -168,6 +175,9 @@ export class Player {
     const nativeHls = !!v.canPlayType('application/vnd.apple.mpegurl');
     if (link.kind === 'hls' && (!nativeHls || relay) && Hls.isSupported()) {
       const hls = new Hls({
+        // TVs have little memory for video: keep 30 s behind the playhead, not everything played so far.
+        backBufferLength: 30,
+        maxBufferLength: 30,
         xhrSetup: (xhr, url) => {
           if (relay) xhr.open('GET', relayAddress(url, referer), true); // playlists and segments, all through the relay
           if (link.headers) for (const k in link.headers) { try { xhr.setRequestHeader(k, link.headers[k]); } catch { /* forbidden header */ } }
@@ -215,6 +225,7 @@ export class Player {
   }
 
   reset() {
+    clearTimeout(this.seekTimer); this.seekTarget = -1;
     if (this.yt) { this.yt.parentNode!.removeChild(this.yt); this.yt = null; this.ytDuration = 0; this.ytPaused = false; }
     if (this.passive) { this.passive.parentNode!.removeChild(this.passive); this.passive = null; }
     this.video.style.display = '';
